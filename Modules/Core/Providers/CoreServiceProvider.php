@@ -2,13 +2,17 @@
 
 namespace Modules\Core\Providers;
 
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
+use Modules\Core\Console\DeleteModuleCommand;
+use Modules\Core\Console\DownloadModuleCommand;
 use Modules\Core\Console\InstallCommand;
 use Modules\Core\Console\PublishModuleAssetsCommand;
 use Modules\Core\Console\PublishThemeAssetsCommand;
+use Modules\Core\Events\EditorIsRendering;
 use Modules\Core\Foundation\Theme\ThemeManager;
 use Modules\Core\Traits\CanPublishConfiguration;
 use Nwidart\Modules\Module;
@@ -50,6 +54,7 @@ class CoreServiceProvider extends ServiceProvider
         $this->registerModuleResourceNamespaces();
 
         $this->bladeDirectives();
+        $this->app['events']->listen(EditorIsRendering::class, config('asgard.core.core.wysiwyg-handler'));
     }
 
     /**
@@ -61,6 +66,9 @@ class CoreServiceProvider extends ServiceProvider
     {
         $this->app->singleton('asgard.isInstalled', function () {
             return true === env('INSTALLED', false);
+        });
+        $this->app->singleton('asgard.onBackend', function () {
+            return $this->onBackend();
         });
 
         $this->registerCommands();
@@ -104,6 +112,8 @@ class CoreServiceProvider extends ServiceProvider
             InstallCommand::class,
             PublishThemeAssetsCommand::class,
             PublishModuleAssetsCommand::class,
+            DownloadModuleCommand::class,
+            DeleteModuleCommand::class,
         ]);
     }
 
@@ -277,10 +287,6 @@ class CoreServiceProvider extends ServiceProvider
      */
     private function moduleHasCentralisedTranslations(Module $module)
     {
-        if (! array_has($this->app['modules']->enabled(), 'Translation')) {
-            return false;
-        }
-
         return is_dir($this->getCentralisedTranslationPath($module));
     }
 
@@ -291,7 +297,9 @@ class CoreServiceProvider extends ServiceProvider
      */
     private function getCentralisedTranslationPath(Module $module)
     {
-        return $this->app['modules']->find('Translation')->getPath() . "/Resources/lang/{$module->getLowerName()}";
+        $path = config('modules.paths.modules') . '/Translation';
+
+        return $path . "/Resources/lang/{$module->getLowerName()}";
     }
 
     /**
@@ -308,6 +316,20 @@ class CoreServiceProvider extends ServiceProvider
 
             return "<?php {$variable} = {$value}; ?>";
         });
+    }
+
+    /**
+     * Checks if the current url matches the configured backend uri
+     * @return bool
+     */
+    private function onBackend()
+    {
+        $url = app(Request::class)->url();
+        if (str_contains($url, config('asgard.core.core.admin-prefix'))) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

@@ -3,17 +3,19 @@
 namespace Modules\Menu\Tests;
 
 use Faker\Factory;
-use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Maatwebsite\Sidebar\SidebarServiceProvider;
 use Mcamara\LaravelLocalization\Facades\LaravelLocalization;
 use Mcamara\LaravelLocalization\LaravelLocalizationServiceProvider;
 use Modules\Core\Providers\CoreServiceProvider;
+use Modules\Menu\Providers\EventServiceProvider;
 use Modules\Menu\Providers\MenuServiceProvider;
 use Modules\Menu\Repositories\MenuItemRepository;
 use Modules\Menu\Repositories\MenuRepository;
 use Modules\Page\Providers\PageServiceProvider;
+use Modules\Setting\Providers\SettingServiceProvider;
+use Modules\Setting\Repositories\SettingRepository;
 use Modules\Tag\Providers\TagServiceProvider;
 use Nwidart\Modules\LaravelModulesServiceProvider;
 use Orchestra\Testbench\TestCase;
@@ -40,6 +42,9 @@ abstract class BaseMenuTest extends TestCase
 
         $this->menu = app(MenuRepository::class);
         $this->menuItem = app(MenuItemRepository::class);
+        app(SettingRepository::class)->createOrUpdate([
+            'core::locales' => ['en', 'fr',]
+        ]);
     }
 
     protected function getPackageProviders($app)
@@ -49,6 +54,8 @@ abstract class BaseMenuTest extends TestCase
             CoreServiceProvider::class,
             TagServiceProvider::class,
             PageServiceProvider::class,
+            SettingServiceProvider::class,
+            EventServiceProvider::class,
             MenuServiceProvider::class,
             LaravelLocalizationServiceProvider::class,
             SidebarServiceProvider::class,
@@ -96,6 +103,10 @@ abstract class BaseMenuTest extends TestCase
         $this->artisan('migrate', [
             '--database' => 'sqlite',
             '--path'     => 'Modules/Tag/Database/Migrations',
+        ]);
+        $this->artisan('migrate', [
+            '--database' => 'sqlite',
+            '--path'     => 'Modules/Setting/Database/Migrations',
         ]);
     }
 

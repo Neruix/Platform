@@ -36,7 +36,6 @@ class ModuleScaffoldTest extends BaseTestCase
         $this->scaffold = $this->app['asgard.module.scaffold'];
     }
 
-
     /**
      * Recursively remove the given directory
      * @param string $dir
@@ -44,10 +43,11 @@ class ModuleScaffoldTest extends BaseTestCase
      */
     public static function delTree($dir)
     {
-        $files = array_diff(scandir($dir), array('.','..'));
+        $files = array_diff(scandir($dir), array('.', '..'));
         foreach ($files as $file) {
             (is_dir("$dir/$file")) ? self::delTree("$dir/$file") : unlink("$dir/$file");
         }
+
         return rmdir($dir);
     }
 
@@ -484,6 +484,21 @@ class ModuleScaffoldTest extends BaseTestCase
         foreach ($matches as $match) {
             $this->assertContains($match, $controllerContents);
         }
+
+        $this->cleanUp();
+    }
+
+    /** @test */
+    public function it_can_overwrite_stub_files_with_custom_ones()
+    {
+        config()->set('asgard.workshop.config.custom-stubs-folder', __DIR__ . '/stubs');
+
+        $this->scaffoldModuleWithEloquent();
+
+        $path = $this->testModulePath . '/Http/backendRoutes.php';
+        $file = $this->finder->get($path);
+        $this->assertTrue($this->finder->isFile($path));
+        $this->assertContains('overwritten by custom config', $file);
 
         $this->cleanUp();
     }
